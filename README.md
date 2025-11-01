@@ -128,7 +128,7 @@ issue-tracker/
    ```env
    MONGO_URI=your_mongodb_connection_string
    JWT_SECRET=your_secure_jwt_secret
-   PORT=5000
+   PORT=8000
    NODE_ENV=development
    ```
 
@@ -151,7 +151,7 @@ issue-tracker/
 
 4. Update the `.env` file with your configuration:
    ```env
-   VITE_API_BASE_URL=http://localhost:5000/api
+   VITE_API_BASE_URL=http://localhost:3000/api
    ```
 
 ## Database Seeding
@@ -196,8 +196,8 @@ This will create:
    ```
 
 The application will be available at:
-- Frontend: http://localhost:5173
-- Backend API: http://localhost:5000
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8000
 
 ### Production Mode
 
@@ -357,11 +357,11 @@ The frontend should be served separately using a web server or development serve
 |--------------|--------------------------|----------------------------------|
 | MONGO_URI    | MongoDB connection string| mongodb://localhost:27017/issue_tracker |
 | JWT_SECRET   | Secret for JWT signing   | your_jwt_secret_here             |
-| PORT         | Server port              | 5000                             |
+| PORT         | Server port              | 3000                             |
 | NODE_ENV     | Environment              | development                      |
 
 ### Frontend (.env)
 
 | Variable          | Description              | Example                          |
 |-------------------|--------------------------|----------------------------------|
-| VITE_API_BASE_URL | Backend API base URL     | http://localhost:5000/api        |
+| VITE_API_BASE_URL | Backend API base URL     | http://localhost:8000/api        |
