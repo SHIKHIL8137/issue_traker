@@ -1,6 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useEffect, useState } from 'react';
+import Loader from '../components/ui/Loader.jsx';
 
 export default function ProtectedRoute() {
   const { user, loading, checkAuth } = useAuth();
@@ -29,7 +30,7 @@ export default function ProtectedRoute() {
   if (loading || authLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        <Loader size="lg" />
       </div>
     );
   }

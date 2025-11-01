@@ -4,22 +4,27 @@ import api from '../services/api.js';
 import Card from '../components/ui/Card.jsx';
 import Select from '../components/ui/Select.jsx';
 import SectionHeader from '../components/ui/SectionHeader.jsx';
+import Loader from '../components/ui/Loader.jsx';
 import { motion } from 'framer-motion';
 
 export default function UserManagement() {
   const { theme } = useTheme();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(false);
 
   const textClass = theme === 'dark' ? 'text-white' : 'text-slate-900';
   const textSecondary = theme === 'dark' ? 'text-slate-400' : 'text-slate-600';
 
   const load = async () => {
+    setInitialLoading(true);
     try {
       const data = await api.listUsers();
       setUsers(data.users || data);
     } catch (error) {
       console.error('Error loading users:', error);
+    } finally {
+      setInitialLoading(false);
     }
   };
 
@@ -36,6 +41,14 @@ export default function UserManagement() {
       setLoading(false);
     }
   };
+
+  if (initialLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader size="lg" />
+      </div>
+    );
+  }
 
   return (
     <motion.div 

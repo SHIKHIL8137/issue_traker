@@ -7,6 +7,7 @@ import SectionHeader from '../components/ui/SectionHeader.jsx';
 import Button from '../components/ui/Button.jsx';
 import ConfirmationModal from '../components/ui/ConfirmationModal.jsx';
 import { motion } from 'framer-motion';
+import Loader from '../components/ui/Loader.jsx';
 
 export default function AdminPanel() {
   const { theme } = useTheme();
@@ -162,7 +163,7 @@ export default function AdminPanel() {
       {/* Loading State */}
       {loading && (
         <div className="flex justify-center items-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          <Loader size="lg" />
         </div>
       )}
 

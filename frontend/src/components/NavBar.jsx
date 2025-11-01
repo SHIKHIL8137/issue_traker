@@ -1,12 +1,14 @@
+import { useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useTheme } from '../context/ThemeContext.jsx';
-import { motion } from 'framer-motion';
-import { Sun, Moon, User, LogOut, Settings, Shield } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Sun, Moon, User, LogOut, Settings, Shield, Home, Menu, X } from 'lucide-react';
 
 export default function NavBar() {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const bgClass = theme === 'dark' 
     ? 'bg-gradient-to-r from-slate-900/80 to-slate-800/80 backdrop-blur-xl' 
@@ -19,6 +21,13 @@ export default function NavBar() {
 
   const navLinkClass = ({ isActive }) => 
     `px-4 py-2 rounded-xl transition-all flex items-center gap-2 ${
+      isActive 
+        ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg shadow-purple-500/30' 
+        : `${textClass} ${hoverClass}`
+    }`;
+
+  const mobileNavLinkClass = ({ isActive }) => 
+    `px-4 py-3 rounded-xl transition-all flex items-center gap-2 w-full ${
       isActive 
         ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg shadow-purple-500/30' 
         : `${textClass} ${hoverClass}`
@@ -48,9 +57,15 @@ export default function NavBar() {
           </Link>
         </motion.div>
         
-        <div className="flex items-center gap-2">
+        {/* Desktop Navigation */}
+        <div className="hidden md:flex items-center gap-2">
           {user ? (
             <>
+              <NavLink to="/" className={navLinkClass}>
+                <Home className="w-4 h-4" />
+                Dashboard
+              </NavLink>
+              
               <NavLink to="/issues" className={navLinkClass}>
                 Issues
               </NavLink>
@@ -73,16 +88,6 @@ export default function NavBar() {
                 <NavLink to="/user" className={navLinkClass}>
                   <User className="w-4 h-4" />
                   My Area
-                </NavLink>
-              )}
-              
-              {/* Only show "New Issue" button for Users and Developers, not Admins */}
-              {user.role !== 'Admin' && (
-                <NavLink 
-                  to="/issues/new" 
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-500 hover:to-purple-500 shadow-lg shadow-purple-500/30 transition-all flex items-center gap-2"
-                >
-                  + New Issue
                 </NavLink>
               )}
               
@@ -139,7 +144,138 @@ export default function NavBar() {
             )}
           </motion.button>
         </div>
+        
+        {/* Mobile Menu Button */}
+        <div className="md:hidden flex items-center gap-2">
+          <motion.button 
+            onClick={toggleTheme} 
+            className={`p-2 rounded-xl ${bgClass} ${textClass} border ${borderClass} shadow-lg flex items-center justify-center`}
+            whileHover={{ rotate: 180 }}
+            whileTap={{ scale: 0.9 }}
+            transition={{ duration: 0.5 }}
+          >
+            {theme === 'dark' ? (
+              <Sun className="w-5 h-5 text-amber-400" />
+            ) : (
+              <Moon className="w-5 h-5 text-indigo-600" />
+            )}
+          </motion.button>
+          
+          <button 
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className={`p-2 rounded-xl ${bgClass} ${textClass} border ${borderClass} shadow-lg flex items-center justify-center ml-2`}
+          >
+            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+        </div>
       </div>
+      
+      {/* Mobile Navigation */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div 
+            className="md:hidden border-t border-slate-700/30"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className="px-4 py-2 flex flex-col gap-1">
+              {user ? (
+                <>
+                  <NavLink 
+                    to="/" 
+                    className={mobileNavLinkClass}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Home className="w-4 h-4" />
+                    Dashboard
+                  </NavLink>
+                  
+                  <NavLink 
+                    to="/issues" 
+                    className={mobileNavLinkClass}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Issues
+                  </NavLink>
+                  
+                  {user.role === 'Admin' && (
+                    <NavLink 
+                      to="/admin" 
+                      className={mobileNavLinkClass}
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Shield className="w-4 h-4" />
+                      Admin
+                    </NavLink>
+                  )}
+                  
+                  {user.role === 'Developer' && (
+                    <NavLink 
+                      to="/developer" 
+                      className={mobileNavLinkClass}
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Settings className="w-4 h-4" />
+                      Developer
+                    </NavLink>
+                  )}
+                  
+                  {user.role === 'User' && (
+                    <NavLink 
+                      to="/user" 
+                      className={mobileNavLinkClass}
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <User className="w-4 h-4" />
+                      My Area
+                    </NavLink>
+                  )}
+                  
+                  <div className="border-t border-slate-700/30 my-2"></div>
+                  
+                  <div className="px-4 py-3">
+                    <p className={`font-semibold ${textClass}`}>{user.name}</p>
+                    <p className={`text-sm ${textSecondary}`}>{user.email}</p>
+                    <span className="inline-block mt-2 px-3 py-1 text-xs rounded-full bg-gradient-to-r from-blue-500 to-purple-500 text-white">
+                      {user.role}
+                    </span>
+                  </div>
+                  
+                  <button 
+                    onClick={() => {
+                      logout();
+                      setMobileMenuOpen(false);
+                    }} 
+                    className="px-4 py-3 rounded-xl flex items-center gap-2 text-left hover:bg-red-500/50 text-red-500 transition-colors"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <>
+                  <NavLink 
+                    to="/login" 
+                    className={mobileNavLinkClass}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Login
+                  </NavLink>
+                  <NavLink 
+                    to="/signup" 
+                    className={mobileNavLinkClass}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Sign Up
+                  </NavLink>
+                </>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.nav>
   );
 }

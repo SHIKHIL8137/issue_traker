@@ -112,6 +112,18 @@ export const updateIssue = async (req, res) => {
     const changes = {};
 
     if (value.status && value.status !== issue.status) {
+      // Implement status flow restrictions
+      const isValidTransition = 
+        (issue.status === 'Open' && value.status === 'In-Progress') || // Open → In-Progress
+        (issue.status === 'In-Progress' && value.status === 'Resolved') || // In-Progress → Resolved
+        (issue.status === 'Resolved' && value.status === 'In-Progress'); // Allow Resolved → In-Progress for corrections
+      
+      if (!isValidTransition) {
+        return res.status(400).json({ 
+          message: `Invalid status transition from ${issue.status} to ${value.status}` 
+        });
+      }
+      
       changes.status = { from: issue.status, to: value.status };
       updates.status = value.status;
     }
@@ -124,13 +136,17 @@ export const updateIssue = async (req, res) => {
       }
       
       changes.assignee = { 
-        from: issue.assignee ? { name: issue.assignee.name, _id: issue.assignee._id } : null,
+        from: issue.assignee ? { name: issue.assignee.name, email: issue.assignee.email, _id: issue.assignee._id } : null,
         to: value.assignee ? await getUserInfo(value.assignee) : null
       };
       updates.assignee = value.assignee || null;
+      
       // Reset assignment status when reassigning
       if (value.assignee) {
         updates.assignmentStatus = 'Pending';
+      } else {
+        // When unassigning, also reset assignment status
+        updates.assignmentStatus = null;
       }
     }
     if (value.title && value.title !== issue.title) {
@@ -267,8 +283,8 @@ const getUserInfo = async (userId) => {
   try {
     // Use a dynamic import to avoid circular dependencies
     const User = (await import('../models/User.js')).default;
-    const user = await User.findById(userId, 'name');
-    return user ? { name: user.name, _id: user._id } : null;
+    const user = await User.findById(userId, 'name email');
+    return user ? { name: user.name, email: user.email, _id: user._id } : null;
   } catch (error) {
     return null;
   }
