@@ -24,7 +24,6 @@ export default function Login() {
   const [submitting, setSubmitting] = useState(false);
   const [touched, setTouched] = useState({});
 
-  // Redirect if already logged in
   useEffect(() => {
     if (user) {
       const dest = location.state?.from?.pathname || '/';
@@ -32,7 +31,6 @@ export default function Login() {
     }
   }, [user, navigate, location]);
 
-  // GSAP entry animation
   useEffect(() => {
     gsap.fromTo(
       formRef.current,
@@ -60,14 +58,12 @@ export default function Login() {
   };
 
   const handleFieldFocus = (fieldName) => {
-    // Clear error when user focuses on the field
     if (errors[fieldName]) {
       setErrors(prev => ({ ...prev, [fieldName]: null }));
     }
   };
 
   const handleFieldChange = (fieldName, value) => {
-    // Update the field value
     if (fieldName === 'email') {
       setEmail(value);
     } else if (fieldName === 'password') {
@@ -78,16 +74,13 @@ export default function Login() {
   const onSubmit = async (e) => {
     e.preventDefault();
     
-    // Mark all fields as touched
     setTouched({
       email: true,
       password: true
     });
     
-    // Clear previous errors
     setServerError('');
     
-    // Validate form
     if (!validate()) {
       return;
     }
@@ -95,7 +88,6 @@ export default function Login() {
     setSubmitting(true);
     try {
       await login(email, password);
-      // Redirect handled by useEffect above
     } catch (err) {
       setServerError(err.message || 'Login failed');
     } finally {
@@ -116,7 +108,6 @@ export default function Login() {
       ? 'bg-slate-800/50 text-white border-slate-700/50'
       : 'bg-white text-slate-900 border-slate-200';
 
-  // Don't show login form if already logged in
   if (user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -129,13 +120,12 @@ export default function Login() {
     <div
       className={`min-h-screen transition-all duration-700 relative overflow-hidden flex items-center justify-center p-6`}
     >
-      {/* Animated background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div
           className={`absolute w-96 h-96 rounded-full blur-3xl ${
             theme === 'dark' ? 'bg-blue-500/10' : 'bg-blue-400/20'
           }`}
-          animate={{ x: [0, 100, 0], y: [0, 50, 0] }}
+          animate={{ x: [0, 50, 0], y: [0, 25, 0] }}
           transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
           style={{ top: '10%', left: '10%', zIndex: 0 }}
         />
@@ -143,13 +133,12 @@ export default function Login() {
           className={`absolute w-96 h-96 rounded-full blur-3xl ${
             theme === 'dark' ? 'bg-purple-500/10' : 'bg-purple-400/20'
           }`}
-          animate={{ x: [0, -100, 0], y: [0, 100, 0] }}
+          animate={{ x: [0, -50, 0], y: [0, 50, 0] }}
           transition={{ duration: 25, repeat: Infinity, ease: 'linear' }}
           style={{ bottom: '10%', right: '10%', zIndex: 0 }}
         />
       </div>
 
-      {/* Login Form */}
       <motion.div
         ref={formRef}
         className={`w-full max-w-md ${cardBg} rounded-3xl border ${borderClass} shadow-2xl p-8 relative z-10`}
@@ -157,7 +146,6 @@ export default function Login() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
       >
-        {/* Header */}
         <div className="text-center mb-8">
           <h1
             className={`text-4xl font-extrabold ${textClass} mb-2 bg-clip-text text-transparent bg-gradient-to-r ${
@@ -171,7 +159,6 @@ export default function Login() {
           <p className={textSecondary}>Sign in to your account to continue</p>
         </div>
 
-        {/* Error Message */}
         {serverError && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
@@ -182,9 +169,7 @@ export default function Login() {
           </motion.div>
         )}
 
-        {/* Form */}
         <form onSubmit={onSubmit} className="space-y-5">
-          {/* Email */}
           <div>
             <label className={`block text-sm font-semibold ${textClass} mb-2`}>
               Email Address
@@ -209,7 +194,6 @@ export default function Login() {
             {touched.email && errors.email && <div className="mt-2"><ErrorDisplay error={errors.email} /></div>}
           </div>
 
-          {/* Password */}
           <div>
             <label className={`block text-sm font-semibold ${textClass} mb-2`}>
               Password
@@ -245,7 +229,6 @@ export default function Login() {
             {touched.password && errors.password && <div className="mt-2"><ErrorDisplay error={errors.password} /></div>}
           </div>
 
-          {/* Submit */}
           <motion.button
             type="submit"
             disabled={submitting}

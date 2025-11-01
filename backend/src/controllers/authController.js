@@ -2,7 +2,6 @@ import User from '../models/User.js';
 import { generateToken } from '../utils/generateToken.js';
 import { registerSchema, loginSchema, updateRoleSchema } from '../validation/authSchema.js';
 
-// @desc    Register user
 export const registerUser = async (req, res, next) => {
   try {
     const result = registerSchema.safeParse(req.body);
@@ -15,13 +14,12 @@ export const registerUser = async (req, res, next) => {
 
     const user = await User.create({ name, email, password, role });
     
-    // Set cookie with token
     const token = generateToken(user._id, user.role, user.name, user.email);
     res.cookie('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+      maxAge: 30 * 24 * 60 * 60 * 1000
     });
 
     res.status(201).json({
@@ -31,11 +29,10 @@ export const registerUser = async (req, res, next) => {
       role: user.role
     });
   } catch (err) {
-    next(err); // Pass error to global handler
+    next(err);
   }
 };
 
-// @desc    Login user
 export const loginUser = async (req, res, next) => {
   try {
     const result = loginSchema.safeParse(req.body);
@@ -48,13 +45,12 @@ export const loginUser = async (req, res, next) => {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    // Set cookie with token
     const token = generateToken(user._id, user.role, user.name, user.email);
     res.cookie('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+      maxAge: 30 * 24 * 60 * 60 * 1000
     });
 
     res.json({
@@ -68,7 +64,6 @@ export const loginUser = async (req, res, next) => {
   }
 };
 
-// @desc    Logout user
 export const logoutUser = async (req, res, next) => {
   try {
     res.cookie('token', '', {
@@ -81,7 +76,6 @@ export const logoutUser = async (req, res, next) => {
   }
 };
 
-// @desc    Get user profile
 export const getProfile = async (req, res, next) => {
   try {
     const user = await User.findById(req.user.id).select('-password');
@@ -94,7 +88,6 @@ export const getProfile = async (req, res, next) => {
   }
 };
 
-// @desc    Update user role (Admin only)
 export const updateUserRole = async (req, res, next) => {
   try {
     const result = updateRoleSchema.safeParse(req.body);

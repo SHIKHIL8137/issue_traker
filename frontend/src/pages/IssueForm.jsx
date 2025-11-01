@@ -43,14 +43,12 @@ export default function IssueForm({ mode }) {
   };
 
   const handleFieldFocus = (fieldName) => {
-    // Clear error when user focuses on the field
     if (errors[fieldName]) {
       setErrors(prev => ({ ...prev, [fieldName]: null }));
     }
   };
 
   const handleFieldChange = (fieldName, value) => {
-    // Update the field value
     setForm(prev => ({ ...prev, [fieldName]: value }));
   };
 
@@ -71,17 +69,14 @@ export default function IssueForm({ mode }) {
   const onSubmit = async (e) => {
     e.preventDefault();
     
-    // Mark all fields as touched
     setTouched({
       title: true,
       description: true,
       priority: true
     });
     
-    // Clear previous errors
     setServerError('');
     
-    // Validate form
     if (!validate()) {
       return;
     }

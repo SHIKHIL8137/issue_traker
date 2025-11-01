@@ -1,5 +1,3 @@
-// Validation utility functions for frontend forms
-
 export const validateName = (name) => {
   if (!name || name.trim().length < 2) {
     return 'Name must be at least 2 characters long';
@@ -49,7 +47,6 @@ export const validateRole = (role) => {
   return null;
 };
 
-// Generic validation function for forms
 export const validateForm = (fields, rules) => {
   const errors = {};
   
@@ -70,7 +67,6 @@ export const validateForm = (fields, rules) => {
     }
   });
   
-  // Remove null/undefined errors
   Object.keys(errors).forEach(key => {
     if (!errors[key]) {
       delete errors[key];
@@ -80,7 +76,6 @@ export const validateForm = (fields, rules) => {
   return errors;
 };
 
-// Real-time validation for individual fields
 export const validateField = (fieldName, value, fields = {}) => {
   switch (fieldName) {
     case 'name':

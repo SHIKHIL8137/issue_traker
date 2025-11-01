@@ -3,7 +3,6 @@ import Issue from '../models/Issue.js';
 import AuditLog from '../models/AuditLog.js';
 import { createCommentSchema } from '../validation/commentSchema.js';
 
-// @desc    Add comment (User+ on own, others on any)
 export const addComment = async (req, res) => {
   const result = createCommentSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ message: result.error.errors[0].message });
@@ -14,7 +13,6 @@ export const addComment = async (req, res) => {
   const issue = await Issue.findById(issueId);
   if (!issue) return res.status(404).json({ message: 'Issue not found' });
 
-  // Users can only comment on their own issues
   if (req.user.role === 'User' && issue.reporter.toString() !== req.user._id.toString()) {
     return res.status(403).json({ message: 'Not authorized to comment' });
   }
@@ -38,13 +36,11 @@ export const addComment = async (req, res) => {
   res.status(201).json(populated);
 };
 
-// @desc    Get threaded comments
 export const getCommentsByIssue = async (req, res) => {
   const comments = await Comment.find({ issue: req.params.issueId })
     .populate('user', 'name')
     .sort({ createdAt: 1 });
 
-  // Build tree
   const commentMap = {};
   const roots = [];
 

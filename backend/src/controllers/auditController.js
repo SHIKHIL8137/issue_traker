@@ -1,6 +1,5 @@
 import AuditLog from '../models/AuditLog.js';
 
-// @desc    Get all audit logs (Admin only)
 export const getAllAuditLogs = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -30,7 +29,6 @@ export const getAllAuditLogs = async (req, res) => {
   }
 };
 
-// @desc    Get audit logs for a specific issue
 export const getAuditLogsByIssue = async (req, res) => {
   try {
     const { issueId } = req.params;

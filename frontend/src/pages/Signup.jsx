@@ -23,7 +23,6 @@ export default function Signup() {
   const [submitting, setSubmitting] = useState(false);
   const [touched, setTouched] = useState({});
 
-  // Redirect if already logged in
   useEffect(() => {
     if (user) {
       navigate('/', { replace: true });
@@ -52,14 +51,12 @@ export default function Signup() {
   };
 
   const handleFieldFocus = (fieldName) => {
-    // Clear error when user focuses on the field
     if (errors[fieldName]) {
       setErrors(prev => ({ ...prev, [fieldName]: null }));
     }
   };
 
   const handleFieldChange = (fieldName, value) => {
-    // Update the field value
     switch (fieldName) {
       case 'name':
         setName(value);
@@ -69,7 +66,6 @@ export default function Signup() {
         break;
       case 'password':
         setPassword(value);
-        // Revalidate confirm password when password changes
         if (touched.confirmPassword) {
           const confirmError = validateField('confirmPassword', confirmPassword, { password: value });
           setErrors(prev => ({ ...prev, confirmPassword: confirmError }));
@@ -87,7 +83,6 @@ export default function Signup() {
   const onSubmit = async (e) => {
     e.preventDefault();
     
-    // Mark all fields as touched
     setTouched({
       name: true,
       email: true,
@@ -96,10 +91,8 @@ export default function Signup() {
       role: true
     });
     
-    // Clear previous errors
     setServerError('');
     
-    // Validate form
     if (!validate()) {
       return;
     }
@@ -107,7 +100,6 @@ export default function Signup() {
     setSubmitting(true);
     try {
       await signup(name, email, password, role);
-      // Redirect handled by useEffect above
     } catch (err) {
       setServerError(err.message || 'Failed to create account');
     } finally {
@@ -128,7 +120,6 @@ export default function Signup() {
       ? 'bg-slate-800/50 text-white border-slate-700/50'
       : 'bg-white text-slate-900 border-slate-200';
 
-  // Don't show signup form if already logged in
   if (user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -139,7 +130,6 @@ export default function Signup() {
 
   return (
     <div className={`min-h-screen transition-all duration-700 relative overflow-hidden flex items-center justify-center p-6`}>
-      {/* Animated background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div
           className={`absolute w-96 h-96 rounded-full blur-3xl ${
@@ -189,7 +179,6 @@ export default function Signup() {
         )}
 
         <form className="space-y-5" onSubmit={onSubmit}>
-          {/* Name */}
           <div>
             <label className={`block text-sm font-semibold ${textClass} mb-2`}>
               Full Name
@@ -214,7 +203,6 @@ export default function Signup() {
             {touched.name && errors.name && <div className="mt-2"><ErrorDisplay error={errors.name} /></div>}
           </div>
 
-          {/* Email */}
           <div>
             <label className={`block text-sm font-semibold ${textClass} mb-2`}>
               Email Address
@@ -239,7 +227,6 @@ export default function Signup() {
             {touched.email && errors.email && <div className="mt-2"><ErrorDisplay error={errors.email} /></div>}
           </div>
 
-          {/* Password */}
           <div>
             <label className={`block text-sm font-semibold ${textClass} mb-2`}>
               Password
@@ -264,7 +251,6 @@ export default function Signup() {
             {touched.password && errors.password && <div className="mt-2"><ErrorDisplay error={errors.password} /></div>}
           </div>
 
-          {/* Confirm Password */}
           <div>
             <label className={`block text-sm font-semibold ${textClass} mb-2`}>
               Confirm Password
@@ -289,7 +275,6 @@ export default function Signup() {
             {touched.confirmPassword && errors.confirmPassword && <div className="mt-2"><ErrorDisplay error={errors.confirmPassword} /></div>}
           </div>
 
-          {/* Role */}
           <div>
             <label className={`block text-sm font-semibold ${textClass} mb-2`}>
               Role
@@ -314,7 +299,6 @@ export default function Signup() {
             {touched.role && errors.role && <div className="mt-2"><ErrorDisplay error={errors.role} /></div>}
           </div>
 
-          {/* Submit */}
           <motion.button
             type="submit"
             disabled={submitting}

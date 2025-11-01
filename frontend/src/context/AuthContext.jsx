@@ -7,7 +7,6 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Initialize auth state from localStorage if available
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
@@ -24,7 +23,6 @@ export function AuthProvider({ children }) {
     const data = res?.data ?? res;
     let userObj = data?.user ?? data?.data?.user ?? null;
     if (!userObj) {
-      // Backend returns flattened user fields
       const { _id, name, email, role } = data;
       if (_id || name || email || role) {
         userObj = { _id, name, email, role };
@@ -47,7 +45,6 @@ export function AuthProvider({ children }) {
       const res = await api.post('/auth/login', { email, password });
       const auth = extractAuth(res);
       setAuth(auth);
-      // Fetch full profile after login
       await checkAuth();
       return auth;
     } catch (error) {
@@ -60,7 +57,6 @@ export function AuthProvider({ children }) {
       const res = await api.post('/auth/register', { name, email, password, role });
       const auth = extractAuth(res);
       setAuth(auth);
-      // Fetch full profile after signup
       await checkAuth();
       return auth;
     } catch (error) {
@@ -85,7 +81,6 @@ export function AuthProvider({ children }) {
     try {
       await api.post('/auth/logout');
     } catch (_) {
-      // Ignore errors during logout
     } finally {
       setAuth({ user: null });
     }

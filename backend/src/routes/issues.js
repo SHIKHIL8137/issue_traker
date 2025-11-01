@@ -24,7 +24,6 @@ router.route('/:id')
   .patch(updateIssue)
   .delete(authorize('Admin'), deleteIssue);
 
-// Assignment acceptance/rejection routes
 router.route('/:id/accept')
   .patch(authorize('Developer'), acceptAssignment);
 

@@ -1,6 +1,5 @@
 import User from '../models/User.js';
 
-// @desc    Get all users (Admin only)
 export const getAllUsers = async (req, res) => {
   try {
     const users = await User.find().select('-password').sort({ createdAt: -1 });
@@ -10,7 +9,6 @@ export const getAllUsers = async (req, res) => {
   }
 };
 
-// @desc    Get user by ID (Admin only)
 export const getUserById = async (req, res) => {
   try {
     const user = await User.findById(req.params.id).select('-password');
@@ -23,7 +21,6 @@ export const getUserById = async (req, res) => {
   }
 };
 
-// @desc    Update user role (Admin only)
 export const updateUserRole = async (req, res) => {
   try {
     const { role } = req.body;
@@ -46,7 +43,6 @@ export const updateUserRole = async (req, res) => {
   }
 };
 
-// @desc    Delete user (Admin only)
 export const deleteUser = async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
@@ -54,7 +50,6 @@ export const deleteUser = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Prevent deleting yourself
     if (user._id.toString() === req.user._id.toString()) {
       return res.status(400).json({ message: 'Cannot delete your own account' });
     }
@@ -66,7 +61,6 @@ export const deleteUser = async (req, res) => {
   }
 };
 
-// @desc    Get all developers (for assignment dropdown)
 export const getDevelopers = async (req, res) => {
   try {
     const developers = await User.find({ role: 'Developer' }).select('name email');
@@ -75,4 +69,3 @@ export const getDevelopers = async (req, res) => {
     res.status(500).json({ message: 'Error fetching developers', error: error.message });
   }
 };
-

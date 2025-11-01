@@ -18,7 +18,6 @@ function CommentItem({ node, onReply }) {
   const textSecondary = theme === 'dark' ? 'text-slate-400' : 'text-slate-600';
   const textTertiary = theme === 'dark' ? 'text-slate-500' : 'text-slate-500';
 
-  // Use the canReply property passed from the parent, default to false if not present
   const isAllowedToReply = node.canReply === true;
 
   const handleBlur = () => {
@@ -28,7 +27,6 @@ function CommentItem({ node, onReply }) {
   };
 
   const handleFocus = () => {
-    // Clear error when user focuses on the field
     if (error) {
       setError('');
     }
@@ -128,7 +126,6 @@ export default function CommentThread({ tree, onReply }) {
   };
 
   const handleFocus = () => {
-    // Clear error when user focuses on the field
     if (error) {
       setError('');
     }

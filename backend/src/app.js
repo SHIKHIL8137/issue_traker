@@ -14,10 +14,8 @@ import { errorHandler } from "./middleware/errorHandler.js";
 export const createApp = () => {
   const app = express();
 
-  // Security + CORS
   applySecurityMiddlewares(app);
 
-  // Utilities
   app.use(compression({ threshold: 1024 }));
   app.use(express.json({ limit: "200kb" }));
   app.use(cookieParser());
