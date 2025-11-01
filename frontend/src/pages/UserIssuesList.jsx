@@ -3,6 +3,7 @@ import { useTheme } from '../context/ThemeContext.jsx';
 import api from '../services/api.js';
 import IssueCard from '../components/IssueCard.jsx';
 import SectionHeader from '../components/ui/SectionHeader.jsx';
+import Loader from '../components/ui/Loader.jsx';
 import { motion } from 'framer-motion';
 import { RefreshCw } from 'lucide-react';
 
@@ -59,7 +60,7 @@ export default function UserIssuesList() {
       {/* Loading State */}
       {loading && (
         <div className="flex justify-center items-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          <Loader size="lg" />
         </div>
       )}
       

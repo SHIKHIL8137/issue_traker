@@ -6,11 +6,9 @@ export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState('dark');
 
   useEffect(() => {
-    // Check for saved theme or default to dark
     const savedTheme = localStorage.getItem('theme') || 'dark';
     setTheme(savedTheme);
     
-    // Apply theme to document
     if (savedTheme === 'dark') {
       document.documentElement.classList.add('dark');
     } else {

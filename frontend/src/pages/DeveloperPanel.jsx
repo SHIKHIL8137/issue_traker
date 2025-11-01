@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useTheme } from '../context/ThemeContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import { Link } from 'react-router-dom';
 import api from '../services/api.js';
 import Button from '../components/ui/Button.jsx';
 import Card from '../components/ui/Card.jsx';
 import SectionHeader from '../components/ui/SectionHeader.jsx';
 import ConfirmationModal from '../components/ui/ConfirmationModal.jsx';
+import Loader from '../components/ui/Loader.jsx';
 import { motion } from 'framer-motion';
 
 export default function DeveloperPanel() {
@@ -35,15 +37,6 @@ export default function DeveloperPanel() {
 
   useEffect(() => { load(); }, [user?._id]);
 
-  const updateStatus = async (id, status) => {
-    try {
-      await api.updateStatus(id, status);
-      await load();
-    } catch (error) {
-      console.error('Error updating status:', error);
-    }
-  };
-
   const handleAssignmentAction = (issue, action) => {
     setSelectedIssue(issue);
     setModalAction(action);
@@ -66,6 +59,14 @@ export default function DeveloperPanel() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader size="lg" />
+      </div>
+    );
+  }
+
   return (
     <motion.div 
       className="flex flex-col gap-6"
@@ -83,8 +84,10 @@ export default function DeveloperPanel() {
             transition={{ type: "spring", stiffness: 300 }}
           >
             <Card className="p-5 rounded-2xl shadow-lg border">
-              <div className={`font-bold ${textClass} text-lg mb-2`}>{i.title}</div>
-              <div className={`text-sm ${textSecondary} mb-4 line-clamp-2`}>{i.description}</div>
+              <Link to={`/issues/${i._id}`} className="block">
+                <div className={`font-bold ${textClass} text-lg mb-2`}>{i.title}</div>
+                <div className={`text-sm ${textSecondary} mb-4 line-clamp-2`}>{i.description}</div>
+              </Link>
               
               {/* Assignment Status */}
               {i.assignmentStatus && (
@@ -116,7 +119,7 @@ export default function DeveloperPanel() {
                 </span>
               </div>
               
-              {/* Assignment Actions */}
+              {/* Assignment Actions - Show for pending assignments */}
               {i.assignmentStatus === 'Pending' && (
                 <div className="flex gap-2 mb-4">
                   <Button 
@@ -136,19 +139,17 @@ export default function DeveloperPanel() {
                 </div>
               )}
               
-              {/* Status Update Actions */}
+              {/* Status Update Actions - Removed from card, only available in issue details */}
               {i.assignmentStatus === 'Accepted' && (
-                <div className="flex gap-2 flex-wrap">
-                  {['Open', 'In-Progress', 'Resolved'].map((s) => (
+                <div className="flex gap-2">
+                  <Link to={`/issues/${i._id}`}>
                     <Button 
-                      key={s} 
-                      variant={i.status === s ? 'primary' : 'outline'} 
-                      onClick={() => updateStatus(i._id, s)}
-                      className="text-xs px-3 py-1.5"
+                      variant="primary" 
+                      size="sm"
                     >
-                      {s}
+                      View Details
                     </Button>
-                  ))}
+                  </Link>
                 </div>
               )}
             </Card>

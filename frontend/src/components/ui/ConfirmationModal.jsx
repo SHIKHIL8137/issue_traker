@@ -11,7 +11,6 @@ export default function ConfirmationModal({ isOpen, onClose, onConfirm, title, m
   const textClass = theme === 'dark' ? 'text-white' : 'text-slate-900';
   const textSecondary = theme === 'dark' ? 'text-slate-400' : 'text-slate-600';
 
-  // Close modal on Escape key press
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === 'Escape') {
@@ -21,7 +20,6 @@ export default function ConfirmationModal({ isOpen, onClose, onConfirm, title, m
 
     if (isOpen) {
       document.addEventListener('keydown', handleEscape);
-      // Prevent body scroll when modal is open
       document.body.style.overflow = 'hidden';
     }
 
@@ -31,7 +29,6 @@ export default function ConfirmationModal({ isOpen, onClose, onConfirm, title, m
     };
   }, [isOpen, onClose]);
 
-  // Close modal when clicking outside
   const handleClickOutside = (e) => {
     if (modalRef.current && !modalRef.current.contains(e.target)) {
       onClose();

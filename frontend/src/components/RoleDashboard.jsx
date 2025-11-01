@@ -4,6 +4,7 @@ import { useTheme } from '../context/ThemeContext.jsx';
 import api from '../services/api.js';
 import Card from '../components/ui/Card.jsx';
 import Badge from '../components/ui/Badge.jsx';
+import Loader from '../components/ui/Loader.jsx';
 import { motion } from 'framer-motion';
 import { 
   User, 
@@ -88,7 +89,7 @@ export default function RoleDashboard() {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        <Loader size="lg" />
       </div>
     );
   }

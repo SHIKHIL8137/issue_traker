@@ -2,18 +2,15 @@ import Issue from '../models/Issue.js';
 import AuditLog from '../models/AuditLog.js';
 import { createIssueSchema, updateIssueSchema } from '../validation/issueSchema.js';
 
-// Helper to log audit
 const logAudit = async (issueId, action, userId, oldValue = null, newValue = null, changes = null) => {
   await AuditLog.create({ issue: issueId, action, performedBy: userId, oldValue, newValue, changes });
 };
 
-// @desc    Create new issue (User+)
 export const createIssue = async (req, res) => {
   try {
     const result = createIssueSchema.safeParse(req.body);
 
     if (!result.success) {
-      // Handle validation errors properly
       const errorMessage = result.error?.errors?.[0]?.message || 'Invalid input data';
       return res.status(400).json({
         message: errorMessage,
@@ -36,7 +33,6 @@ export const createIssue = async (req, res) => {
   }
 };
 
-// @desc    Get all issues
 export const getIssues = async (req, res) => {
   const { status, priority, assignee, assigneeExists, unassigned } = req.query;
   const filter = {};
@@ -44,7 +40,6 @@ export const getIssues = async (req, res) => {
   if (status) filter.status = status;
   if (priority) filter.priority = priority;
   
-  // Handle special assignee filters
   if (assigneeExists === 'true') {
     filter.assignee = { $exists: true, $ne: null };
   } else if (unassigned === 'true') {
@@ -56,7 +51,6 @@ export const getIssues = async (req, res) => {
     filter.assignee = assignee;
   }
 
-  // Users see only their reported issues unless Admin/Developer
   if (req.user.role === 'User') {
     filter.reporter = req.user._id;
   }
@@ -69,7 +63,6 @@ export const getIssues = async (req, res) => {
   res.json(issues);
 };
 
-// @desc    Get single issue
 export const getIssueById = async (req, res) => {
   const issue = await Issue.findById(req.params.id)
     .populate('reporter', 'name')
@@ -81,7 +74,6 @@ export const getIssueById = async (req, res) => {
 
   if (!issue) return res.status(404).json({ message: 'Issue not found' });
 
-  // Restrict if User and not reporter
   if (req.user.role === 'User' && issue.reporter._id.toString() !== req.user._id.toString()) {
     return res.status(403).json({ message: 'Not authorized' });
   }
@@ -89,12 +81,10 @@ export const getIssueById = async (req, res) => {
   res.json(issue);
 };
 
-// @desc    Update issue (role-based)
 export const updateIssue = async (req, res) => {
   try {
     const result = updateIssueSchema.safeParse(req.body);
     if (!result.success) {
-      // Handle validation errors properly
       const errorMessage = result.error?.errors?.[0]?.message || 'Invalid input data';
       return res.status(400).json({ message: errorMessage });
     }
@@ -103,7 +93,6 @@ export const updateIssue = async (req, res) => {
     const issue = await Issue.findById(req.params.id);
     if (!issue) return res.status(404).json({ message: 'Issue not found' });
 
-    // Only reporter (if User), Developer, or Admin can edit
     if (req.user.role === 'User' && issue.reporter.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Not authorized' });
     }
@@ -112,11 +101,21 @@ export const updateIssue = async (req, res) => {
     const changes = {};
 
     if (value.status && value.status !== issue.status) {
+      const isValidTransition = 
+        (issue.status === 'Open' && value.status === 'In-Progress') ||
+        (issue.status === 'In-Progress' && value.status === 'Resolved') ||
+        (issue.status === 'Resolved' && value.status === 'In-Progress');
+      
+      if (!isValidTransition) {
+        return res.status(400).json({ 
+          message: `Invalid status transition from ${issue.status} to ${value.status}` 
+        });
+      }
+      
       changes.status = { from: issue.status, to: value.status };
       updates.status = value.status;
     }
     if (value.assignee !== undefined && value.assignee !== issue.assignee?.toString()) {
-      // Check if there's already a pending assignment
       if (issue.assignee && issue.assignmentStatus === 'Pending') {
         return res.status(400).json({ 
           message: 'Cannot change assignment while there is a pending assignment. Please wait for the developer to accept or reject, or unassign first.' 
@@ -124,13 +123,15 @@ export const updateIssue = async (req, res) => {
       }
       
       changes.assignee = { 
-        from: issue.assignee ? { name: issue.assignee.name, _id: issue.assignee._id } : null,
+        from: issue.assignee ? { name: issue.assignee.name, email: issue.assignee.email, _id: issue.assignee._id } : null,
         to: value.assignee ? await getUserInfo(value.assignee) : null
       };
       updates.assignee = value.assignee || null;
-      // Reset assignment status when reassigning
+      
       if (value.assignee) {
         updates.assignmentStatus = 'Pending';
+      } else {
+        updates.assignmentStatus = null;
       }
     }
     if (value.title && value.title !== issue.title) {
@@ -146,22 +147,18 @@ export const updateIssue = async (req, res) => {
       updates.priority = value.priority;
     }
 
-    // Only Admin can assign
     if (value.assignee !== undefined && req.user.role !== 'Admin') {
       return res.status(403).json({ message: 'Only Admin can assign issues' });
     }
 
-    // Only Developer/Admin can change status
     if (value.status && !['Developer', 'Admin'].includes(req.user.role)) {
       return res.status(403).json({ message: 'Only Developer or Admin can update status' });
     }
 
-    // If there are changes, save and log them
     if (Object.keys(updates).length > 0) {
       Object.assign(issue, updates);
       await issue.save();
 
-      // Log audit with changes
       if (Object.keys(changes).length > 0) {
         await logAudit(
           issue._id,
@@ -185,22 +182,102 @@ export const updateIssue = async (req, res) => {
   }
 };
 
-// @desc    Accept issue assignment (Developer)
+export const deleteIssue = async (req, res) => {
+  try {
+    const issue = await Issue.findById(req.params.id);
+    if (!issue) return res.status(404).json({ message: 'Issue not found' });
+
+    if (req.user.role === 'User' && issue.reporter.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    await Issue.deleteOne({ _id: req.params.id });
+    await AuditLog.create({
+      issue: req.params.id,
+      action: 'DELETE',
+      performedBy: req.user._id
+    });
+
+    res.json({ message: 'Issue removed' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+export const assignIssue = async (req, res) => {
+  try {
+    const { assignee } = req.body;
+    const issue = await Issue.findById(req.params.id);
+    if (!issue) return res.status(404).json({ message: 'Issue not found' });
+
+    if (issue.assignee && issue.assignmentStatus === 'Pending') {
+      return res.status(400).json({ 
+        message: 'Cannot change assignment while there is a pending assignment. Please wait for the developer to accept or reject, or unassign first.' 
+      });
+    }
+
+    const changes = {
+      assignee: { 
+        from: issue.assignee ? { name: issue.assignee.name, email: issue.assignee.email, _id: issue.assignee._id } : null,
+        to: assignee ? await getUserInfo(assignee) : null
+      }
+    };
+
+    issue.assignee = assignee || null;
+    if (assignee) {
+      issue.assignmentStatus = 'Pending';
+    } else {
+      issue.assignmentStatus = null;
+    }
+    await issue.save();
+
+    await logAudit(
+      issue._id,
+      'UPDATE',
+      req.user._id,
+      null,
+      null,
+      changes
+    );
+
+    const updatedIssue = await Issue.findById(issue._id)
+      .populate('reporter', 'name')
+      .populate('assignee', 'name email');
+
+    res.json(updatedIssue);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+const getUserInfo = async (userId) => {
+  if (!userId) return null;
+  try {
+    const user = await User.findById(userId, 'name email');
+    return user ? { name: user.name, email: user.email, _id: user._id } : null;
+  } catch (error) {
+    return null;
+  }
+};
+
 export const acceptAssignment = async (req, res) => {
   try {
     const issue = await Issue.findById(req.params.id);
     if (!issue) return res.status(404).json({ message: 'Issue not found' });
 
-    // Check if issue is assigned to this developer
     if (!issue.assignee || issue.assignee.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: 'Issue not assigned to you' });
+      return res.status(403).json({ message: 'Not authorized to accept this assignment' });
     }
 
-    // Update assignment status
+    if (issue.assignmentStatus !== 'Pending') {
+      return res.status(400).json({ message: 'Assignment is not pending' });
+    }
+
     issue.assignmentStatus = 'Accepted';
     await issue.save();
 
-    // Log audit
     await logAudit(
       issue._id,
       'UPDATE',
@@ -221,33 +298,38 @@ export const acceptAssignment = async (req, res) => {
   }
 };
 
-// @desc    Reject issue assignment (Developer)
 export const rejectAssignment = async (req, res) => {
   try {
     const issue = await Issue.findById(req.params.id);
     if (!issue) return res.status(404).json({ message: 'Issue not found' });
 
-    // Check if issue is assigned to this developer
     if (!issue.assignee || issue.assignee.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: 'Issue not assigned to you' });
+      return res.status(403).json({ message: 'Not authorized to reject this assignment' });
     }
 
-    // Update assignment status and remove assignee
-    issue.assignmentStatus = 'Rejected';
+    if (issue.assignmentStatus !== 'Pending') {
+      return res.status(400).json({ message: 'Assignment is not pending' });
+    }
+
+    const changes = {
+      assignee: { 
+        from: issue.assignee ? { name: issue.assignee.name, email: issue.assignee.email, _id: issue.assignee._id } : null,
+        to: null
+      },
+      assignmentStatus: { from: 'Pending', to: 'Rejected' }
+    };
+
     issue.assignee = null;
+    issue.assignmentStatus = 'Rejected';
     await issue.save();
 
-    // Log audit
     await logAudit(
       issue._id,
       'UPDATE',
       req.user._id,
       null,
       null,
-      { 
-        assignmentStatus: { from: 'Pending', to: 'Rejected' },
-        assignee: { from: { name: req.user.name, _id: req.user._id }, to: null }
-      }
+      changes
     );
 
     const updatedIssue = await Issue.findById(issue._id)
@@ -255,35 +337,6 @@ export const rejectAssignment = async (req, res) => {
       .populate('assignee', 'name email');
 
     res.json(updatedIssue);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server Error' });
-  }
-};
-
-// Helper function to get user info for audit logs
-const getUserInfo = async (userId) => {
-  if (!userId) return null;
-  try {
-    // Use a dynamic import to avoid circular dependencies
-    const User = (await import('../models/User.js')).default;
-    const user = await User.findById(userId, 'name');
-    return user ? { name: user.name, _id: user._id } : null;
-  } catch (error) {
-    return null;
-  }
-};
-
-// @desc    Delete issue (Admin only)
-export const deleteIssue = async (req, res) => {
-  try {
-    const issue = await Issue.findById(req.params.id);
-    if (!issue) return res.status(404).json({ message: 'Issue not found' });
-
-    await issue.deleteOne();
-    await logAudit(issue._id, 'DELETE', req.user._id);
-
-    res.json({ message: 'Issue removed' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server Error' });

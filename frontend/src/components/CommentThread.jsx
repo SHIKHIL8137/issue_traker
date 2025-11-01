@@ -3,19 +3,53 @@ import { useTheme } from '../context/ThemeContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import Input from './ui/Input.jsx';
 import Button from './ui/Button.jsx';
+import ErrorDisplay from './ui/ErrorDisplay.jsx';
+import { validateField } from '../utils/validation.js';
 
 function CommentItem({ node, onReply }) {
   const { theme } = useTheme();
   const { user } = useAuth();
   const [show, setShow] = useState(false);
   const [text, setText] = useState('');
+  const [error, setError] = useState('');
+  const [touched, setTouched] = useState(false);
   
   const textClass = theme === 'dark' ? 'text-white' : 'text-slate-900';
   const textSecondary = theme === 'dark' ? 'text-slate-400' : 'text-slate-600';
   const textTertiary = theme === 'dark' ? 'text-slate-500' : 'text-slate-500';
 
-  // Use the canReply property passed from the parent, default to false if not present
   const isAllowedToReply = node.canReply === true;
+
+  const handleBlur = () => {
+    setTouched(true);
+    const validationError = validateField('comment', text);
+    setError(validationError);
+  };
+
+  const handleFocus = () => {
+    if (error) {
+      setError('');
+    }
+  };
+
+  const handleChange = (value) => {
+    setText(value);
+  };
+
+  const handleSubmit = () => {
+    setTouched(true);
+    const validationError = validateField('comment', text);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+    
+    setError('');
+    onReply(node._id, text);
+    setText('');
+    setShow(false);
+    setTouched(false);
+  };
 
   return (
     <div className="border-l-2 border-gray-200 dark:border-gray-700 pl-4 py-3 my-3">
@@ -39,19 +73,31 @@ function CommentItem({ node, onReply }) {
         </button>
       )}
       {show && isAllowedToReply && (
-        <div className="mt-4 flex gap-2">
+        <div className="mt-4 flex flex-col gap-2">
           <Input 
             value={text} 
-            onChange={(e) => setText(e.target.value)} 
+            onChange={(e) => handleChange(e.target.value)} 
+            onBlur={handleBlur}
+            onFocus={handleFocus}
             placeholder="Write a reply..." 
             className="flex-1"
           />
-          <Button 
-            onClick={() => { onReply(node._id, text); setText(''); setShow(false); }}
-            className="px-4 py-2"
-          >
-            Send
-          </Button>
+          {touched && error && <ErrorDisplay error={error} />}
+          <div className="flex gap-2">
+            <Button 
+              onClick={handleSubmit}
+              className="px-4 py-2"
+            >
+              Send
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => { setShow(false); setText(''); setError(''); setTouched(false); }}
+              className="px-4 py-2"
+            >
+              Cancel
+            </Button>
+          </div>
         </div>
       )}
       {Array.isArray(node.children) && node.children.length > 0 && (
@@ -69,31 +115,61 @@ export default function CommentThread({ tree, onReply }) {
   const { user } = useAuth();
   const { theme } = useTheme();
   const [text, setText] = useState('');
+  const [error, setError] = useState('');
+  const [touched, setTouched] = useState(false);
   const textSecondary = theme === 'dark' ? 'text-slate-400' : 'text-slate-600';
   
-  const handleSubmit = () => {
-    if (text.trim()) {
-      onReply(null, text);
-      setText('');
+  const handleBlur = () => {
+    setTouched(true);
+    const validationError = validateField('comment', text);
+    setError(validationError);
+  };
+
+  const handleFocus = () => {
+    if (error) {
+      setError('');
     }
+  };
+
+  const handleChange = (value) => {
+    setText(value);
+  };
+
+  const handleSubmit = () => {
+    setTouched(true);
+    const validationError = validateField('comment', text);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+    
+    setError('');
+    onReply(null, text);
+    setText('');
+    setTouched(false);
   };
   
   return (
     <div>
-      <div className="flex gap-2 mb-4">
+      <div className="flex flex-col gap-2 mb-4">
         <Input 
           value={text} 
-          onChange={(e) => setText(e.target.value)} 
+          onChange={(e) => handleChange(e.target.value)} 
+          onBlur={handleBlur}
+          onFocus={handleFocus}
           placeholder="Add a comment..." 
           className="flex-1"
           onKeyPress={(e) => e.key === 'Enter' && handleSubmit()}
         />
-        <Button 
-          onClick={handleSubmit}
-          className="px-4 py-2"
-        >
-          Post
-        </Button>
+        {touched && error && <ErrorDisplay error={error} />}
+        <div className="flex gap-2">
+          <Button 
+            onClick={handleSubmit}
+            className="px-4 py-2"
+          >
+            Post
+          </Button>
+        </div>
       </div>
       
       {(!tree || tree.length === 0) ? (

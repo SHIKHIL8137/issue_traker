@@ -7,7 +7,6 @@ const commentSchema = new mongoose.Schema({
   parentComment: { type: mongoose.Schema.Types.ObjectId, ref: 'Comment', default: null }
 }, { timestamps: true });
 
-// Index for threaded queries
 commentSchema.index({ issue: 1, parentComment: 1 });
 
 export default mongoose.model('Comment', commentSchema);

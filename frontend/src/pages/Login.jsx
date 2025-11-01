@@ -4,6 +4,9 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { useTheme } from '../context/ThemeContext.jsx';
 import { motion } from 'framer-motion';
 import { gsap } from 'gsap';
+import Loader from '../components/ui/Loader.jsx';
+import ErrorDisplay from '../components/ui/ErrorDisplay.jsx';
+import { validateForm, validateField } from '../utils/validation.js';
 import { Mail, Lock, Eye, EyeOff, LogIn, Sun, Moon, Sparkles } from 'lucide-react';
 
 export default function Login() {
@@ -15,11 +18,12 @@ export default function Login() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [errors, setErrors] = useState({});
+  const [serverError, setServerError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [touched, setTouched] = useState({});
 
-  // Redirect if already logged in
   useEffect(() => {
     if (user) {
       const dest = location.state?.from?.pathname || '/';
@@ -27,7 +31,6 @@ export default function Login() {
     }
   }, [user, navigate, location]);
 
-  // GSAP entry animation
   useEffect(() => {
     gsap.fromTo(
       formRef.current,
@@ -36,15 +39,57 @@ export default function Login() {
     );
   }, []);
 
+  const validate = () => {
+    const formFields = { email, password };
+    const validationRules = {
+      email: 'email',
+      password: 'password'
+    };
+    
+    const validationErrors = validateForm(formFields, validationRules);
+    setErrors(validationErrors);
+    return Object.keys(validationErrors).length === 0;
+  };
+
+  const handleFieldBlur = (fieldName, value) => {
+    setTouched(prev => ({ ...prev, [fieldName]: true }));
+    const error = validateField(fieldName, value);
+    setErrors(prev => ({ ...prev, [fieldName]: error }));
+  };
+
+  const handleFieldFocus = (fieldName) => {
+    if (errors[fieldName]) {
+      setErrors(prev => ({ ...prev, [fieldName]: null }));
+    }
+  };
+
+  const handleFieldChange = (fieldName, value) => {
+    if (fieldName === 'email') {
+      setEmail(value);
+    } else if (fieldName === 'password') {
+      setPassword(value);
+    }
+  };
+
   const onSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    
+    setTouched({
+      email: true,
+      password: true
+    });
+    
+    setServerError('');
+    
+    if (!validate()) {
+      return;
+    }
+    
     setSubmitting(true);
     try {
       await login(email, password);
-      // Redirect handled by useEffect above
     } catch (err) {
-      setError(err.message || 'Login failed');
+      setServerError(err.message || 'Login failed');
     } finally {
       setSubmitting(false);
     }
@@ -63,11 +108,10 @@ export default function Login() {
       ? 'bg-slate-800/50 text-white border-slate-700/50'
       : 'bg-white text-slate-900 border-slate-200';
 
-  // Don't show login form if already logged in
   if (user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        <Loader size="lg" />
       </div>
     );
   }
@@ -76,13 +120,12 @@ export default function Login() {
     <div
       className={`min-h-screen transition-all duration-700 relative overflow-hidden flex items-center justify-center p-6`}
     >
-      {/* Animated background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div
           className={`absolute w-96 h-96 rounded-full blur-3xl ${
             theme === 'dark' ? 'bg-blue-500/10' : 'bg-blue-400/20'
           }`}
-          animate={{ x: [0, 100, 0], y: [0, 50, 0] }}
+          animate={{ x: [0, 50, 0], y: [0, 25, 0] }}
           transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
           style={{ top: '10%', left: '10%', zIndex: 0 }}
         />
@@ -90,13 +133,12 @@ export default function Login() {
           className={`absolute w-96 h-96 rounded-full blur-3xl ${
             theme === 'dark' ? 'bg-purple-500/10' : 'bg-purple-400/20'
           }`}
-          animate={{ x: [0, -100, 0], y: [0, 100, 0] }}
+          animate={{ x: [0, -50, 0], y: [0, 50, 0] }}
           transition={{ duration: 25, repeat: Infinity, ease: 'linear' }}
           style={{ bottom: '10%', right: '10%', zIndex: 0 }}
         />
       </div>
 
-      {/* Login Form */}
       <motion.div
         ref={formRef}
         className={`w-full max-w-md ${cardBg} rounded-3xl border ${borderClass} shadow-2xl p-8 relative z-10`}
@@ -104,15 +146,7 @@ export default function Login() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
       >
-        {/* Header */}
         <div className="text-center mb-8">
-          <motion.div
-            className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-500 mb-4 shadow-lg shadow-purple-500/30"
-            whileHover={{ rotate: 360, scale: 1.1 }}
-            transition={{ duration: 0.6 }}
-          >
-            <Sparkles className="w-8 h-8 text-white" />
-          </motion.div>
           <h1
             className={`text-4xl font-extrabold ${textClass} mb-2 bg-clip-text text-transparent bg-gradient-to-r ${
               theme === 'dark'
@@ -125,20 +159,17 @@ export default function Login() {
           <p className={textSecondary}>Sign in to your account to continue</p>
         </div>
 
-        {/* Error Message */}
-        {error && (
+        {serverError && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-6 p-4 rounded-xl bg-gradient-to-r from-red-500/20 to-pink-500/20 border border-red-500/50 text-red-400"
+            className="mb-6"
           >
-            <p className="text-sm font-medium">{error}</p>
+            <ErrorDisplay error={serverError} />
           </motion.div>
         )}
 
-        {/* Form */}
         <form onSubmit={onSubmit} className="space-y-5">
-          {/* Email */}
           <div>
             <label className={`block text-sm font-semibold ${textClass} mb-2`}>
               Email Address
@@ -150,16 +181,19 @@ export default function Login() {
               <motion.input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => handleFieldChange('email', e.target.value)}
+                onBlur={(e) => handleFieldBlur('email', e.target.value)}
+                onFocus={() => handleFieldFocus('email')}
                 placeholder="Enter your email"
-                required
-                className={`w-full ${inputBg} pl-12 pr-4 py-4 rounded-xl border focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all`}
+                className={`w-full ${inputBg} pl-12 pr-4 py-4 rounded-xl border focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all ${
+                  (touched.email && errors.email) ? 'border-red-500' : ''
+                }`}
                 whileFocus={{ scale: 1.02 }}
               />
             </div>
+            {touched.email && errors.email && <div className="mt-2"><ErrorDisplay error={errors.email} /></div>}
           </div>
 
-          {/* Password */}
           <div>
             <label className={`block text-sm font-semibold ${textClass} mb-2`}>
               Password
@@ -171,10 +205,13 @@ export default function Login() {
               <motion.input
                 type={showPassword ? 'text' : 'password'}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => handleFieldChange('password', e.target.value)}
+                onBlur={(e) => handleFieldBlur('password', e.target.value)}
+                onFocus={() => handleFieldFocus('password')}
                 placeholder="Enter your password"
-                required
-                className={`w-full ${inputBg} pl-12 pr-12 py-4 rounded-xl border focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all`}
+                className={`w-full ${inputBg} pl-12 pr-12 py-4 rounded-xl border focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all ${
+                  (touched.password && errors.password) ? 'border-red-500' : ''
+                }`}
                 whileFocus={{ scale: 1.02 }}
               />
               <button
@@ -189,9 +226,9 @@ export default function Login() {
                 )}
               </button>
             </div>
+            {touched.password && errors.password && <div className="mt-2"><ErrorDisplay error={errors.password} /></div>}
           </div>
 
-          {/* Submit */}
           <motion.button
             type="submit"
             disabled={submitting}
@@ -205,11 +242,7 @@ export default function Login() {
           >
             {submitting ? (
               <>
-                <motion.div
-                  className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                />
+                <Loader size="sm" />
                 Signing in...
               </>
             ) : (

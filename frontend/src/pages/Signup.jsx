@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useTheme } from '../context/ThemeContext.jsx';
 import { motion } from 'framer-motion';
+import Loader from '../components/ui/Loader.jsx';
+import ErrorDisplay from '../components/ui/ErrorDisplay.jsx';
+import { validateForm, validateField } from '../utils/validation.js';
 import { Mail, Lock, User, Building, LogIn } from 'lucide-react';
 
 export default function Signup() {
@@ -13,26 +16,92 @@ export default function Signup() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState('User');
-  const [error, setError] = useState('');
+  const [errors, setErrors] = useState({});
+  const [serverError, setServerError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [touched, setTouched] = useState({});
 
-  // Redirect if already logged in
   useEffect(() => {
     if (user) {
       navigate('/', { replace: true });
     }
   }, [user, navigate]);
 
+  const validate = () => {
+    const formFields = { name, email, password, confirmPassword, role };
+    const validationRules = {
+      name: 'name',
+      email: 'email',
+      password: 'password',
+      confirmPassword: 'confirmPassword',
+      role: 'role'
+    };
+    
+    const validationErrors = validateForm(formFields, validationRules);
+    setErrors(validationErrors);
+    return Object.keys(validationErrors).length === 0;
+  };
+
+  const handleFieldBlur = (fieldName, value, allFields = {}) => {
+    setTouched(prev => ({ ...prev, [fieldName]: true }));
+    const error = validateField(fieldName, value, allFields);
+    setErrors(prev => ({ ...prev, [fieldName]: error }));
+  };
+
+  const handleFieldFocus = (fieldName) => {
+    if (errors[fieldName]) {
+      setErrors(prev => ({ ...prev, [fieldName]: null }));
+    }
+  };
+
+  const handleFieldChange = (fieldName, value) => {
+    switch (fieldName) {
+      case 'name':
+        setName(value);
+        break;
+      case 'email':
+        setEmail(value);
+        break;
+      case 'password':
+        setPassword(value);
+        if (touched.confirmPassword) {
+          const confirmError = validateField('confirmPassword', confirmPassword, { password: value });
+          setErrors(prev => ({ ...prev, confirmPassword: confirmError }));
+        }
+        break;
+      case 'confirmPassword':
+        setConfirmPassword(value);
+        break;
+      case 'role':
+        setRole(value);
+        break;
+    }
+  };
+
   const onSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    
+    setTouched({
+      name: true,
+      email: true,
+      password: true,
+      confirmPassword: true,
+      role: true
+    });
+    
+    setServerError('');
+    
+    if (!validate()) {
+      return;
+    }
+    
     setSubmitting(true);
     try {
       await signup(name, email, password, role);
-      // Redirect handled by useEffect above
     } catch (err) {
-      setError(err.message);
+      setServerError(err.message || 'Failed to create account');
     } finally {
       setSubmitting(false);
     }
@@ -51,18 +120,16 @@ export default function Signup() {
       ? 'bg-slate-800/50 text-white border-slate-700/50'
       : 'bg-white text-slate-900 border-slate-200';
 
-  // Don't show signup form if already logged in
   if (user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        <Loader size="lg" />
       </div>
     );
   }
 
   return (
     <div className={`min-h-screen transition-all duration-700 relative overflow-hidden flex items-center justify-center p-6`}>
-      {/* Animated background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div
           className={`absolute w-96 h-96 rounded-full blur-3xl ${
@@ -89,13 +156,6 @@ export default function Signup() {
         transition={{ duration: 0.6 }}
       >
         <div className="text-center mb-8">
-          <motion.div
-            className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-500 mb-4 shadow-lg shadow-purple-500/30"
-            whileHover={{ rotate: 360, scale: 1.1 }}
-            transition={{ duration: 0.6 }}
-          >
-            <User className="w-8 h-8 text-white" />
-          </motion.div>
           <h1
             className={`text-4xl font-extrabold ${textClass} mb-2 bg-clip-text text-transparent bg-gradient-to-r ${
               theme === 'dark'
@@ -108,18 +168,17 @@ export default function Signup() {
           <p className={textSecondary}>Sign up to get started</p>
         </div>
 
-        {error && (
+        {serverError && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-6 p-4 rounded-xl bg-gradient-to-r from-red-500/20 to-pink-500/20 border border-red-500/50 text-red-400"
+            className="mb-6"
           >
-            <p className="text-sm font-medium">{error}</p>
+            <ErrorDisplay error={serverError} />
           </motion.div>
         )}
 
         <form className="space-y-5" onSubmit={onSubmit}>
-          {/* Name */}
           <div>
             <label className={`block text-sm font-semibold ${textClass} mb-2`}>
               Full Name
@@ -131,16 +190,19 @@ export default function Signup() {
               <motion.input
                 type="text"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => handleFieldChange('name', e.target.value)}
+                onBlur={(e) => handleFieldBlur('name', e.target.value)}
+                onFocus={() => handleFieldFocus('name')}
                 placeholder="Enter your full name"
-                required
-                className={`w-full ${inputBg} pl-12 pr-4 py-4 rounded-xl border focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all`}
+                className={`w-full ${inputBg} pl-12 pr-4 py-4 rounded-xl border focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all ${
+                  (touched.name && errors.name) ? 'border-red-500' : ''
+                }`}
                 whileFocus={{ scale: 1.02 }}
               />
             </div>
+            {touched.name && errors.name && <div className="mt-2"><ErrorDisplay error={errors.name} /></div>}
           </div>
 
-          {/* Email */}
           <div>
             <label className={`block text-sm font-semibold ${textClass} mb-2`}>
               Email Address
@@ -152,16 +214,19 @@ export default function Signup() {
               <motion.input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => handleFieldChange('email', e.target.value)}
+                onBlur={(e) => handleFieldBlur('email', e.target.value)}
+                onFocus={() => handleFieldFocus('email')}
                 placeholder="Enter your email"
-                required
-                className={`w-full ${inputBg} pl-12 pr-4 py-4 rounded-xl border focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all`}
+                className={`w-full ${inputBg} pl-12 pr-4 py-4 rounded-xl border focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all ${
+                  (touched.email && errors.email) ? 'border-red-500' : ''
+                }`}
                 whileFocus={{ scale: 1.02 }}
               />
             </div>
+            {touched.email && errors.email && <div className="mt-2"><ErrorDisplay error={errors.email} /></div>}
           </div>
 
-          {/* Password */}
           <div>
             <label className={`block text-sm font-semibold ${textClass} mb-2`}>
               Password
@@ -173,16 +238,43 @@ export default function Signup() {
               <motion.input
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => handleFieldChange('password', e.target.value)}
+                onBlur={(e) => handleFieldBlur('password', e.target.value)}
+                onFocus={() => handleFieldFocus('password')}
                 placeholder="Create a password"
-                required
-                className={`w-full ${inputBg} pl-12 pr-4 py-4 rounded-xl border focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all`}
+                className={`w-full ${inputBg} pl-12 pr-4 py-4 rounded-xl border focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all ${
+                  (touched.password && errors.password) ? 'border-red-500' : ''
+                }`}
                 whileFocus={{ scale: 1.02 }}
               />
             </div>
+            {touched.password && errors.password && <div className="mt-2"><ErrorDisplay error={errors.password} /></div>}
           </div>
 
-          {/* Role */}
+          <div>
+            <label className={`block text-sm font-semibold ${textClass} mb-2`}>
+              Confirm Password
+            </label>
+            <div className="relative">
+              <Lock
+                className={`absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 ${textSecondary}`}
+              />
+              <motion.input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => handleFieldChange('confirmPassword', e.target.value)}
+                onBlur={(e) => handleFieldBlur('confirmPassword', e.target.value, { password })}
+                onFocus={() => handleFieldFocus('confirmPassword')}
+                placeholder="Confirm your password"
+                className={`w-full ${inputBg} pl-12 pr-4 py-4 rounded-xl border focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all ${
+                  (touched.confirmPassword && errors.confirmPassword) ? 'border-red-500' : ''
+                }`}
+                whileFocus={{ scale: 1.02 }}
+              />
+            </div>
+            {touched.confirmPassword && errors.confirmPassword && <div className="mt-2"><ErrorDisplay error={errors.confirmPassword} /></div>}
+          </div>
+
           <div>
             <label className={`block text-sm font-semibold ${textClass} mb-2`}>
               Role
@@ -193,16 +285,20 @@ export default function Signup() {
               />
               <select
                 value={role}
-                onChange={(e) => setRole(e.target.value)}
-                className={`w-full ${inputBg} pl-12 pr-4 py-4 rounded-xl border focus:outline-none focus:ring-2 focus:ring-purple-500 appearance-none transition-all`}
+                onChange={(e) => handleFieldChange('role', e.target.value)}
+                onBlur={(e) => handleFieldBlur('role', e.target.value)}
+                onFocus={() => handleFieldFocus('role')}
+                className={`w-full ${inputBg} pl-12 pr-4 py-4 rounded-xl border focus:outline-none focus:ring-2 focus:ring-purple-500 appearance-none transition-all ${
+                  (touched.role && errors.role) ? 'border-red-500' : ''
+                }`}
               >
                 <option value="User" className={theme === 'dark' ? 'bg-slate-800' : 'bg-white'}>User</option>
                 <option value="Developer" className={theme === 'dark' ? 'bg-slate-800' : 'bg-white'}>Developer</option>
               </select>
             </div>
+            {touched.role && errors.role && <div className="mt-2"><ErrorDisplay error={errors.role} /></div>}
           </div>
 
-          {/* Submit */}
           <motion.button
             type="submit"
             disabled={submitting}
@@ -216,11 +312,7 @@ export default function Signup() {
           >
             {submitting ? (
               <>
-                <motion.div
-                  className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                />
+                <Loader size="sm" />
                 Creating Account...
               </>
             ) : (

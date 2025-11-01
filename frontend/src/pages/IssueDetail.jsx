@@ -10,6 +10,7 @@ import Button from '../components/ui/Button.jsx';
 import Select from '../components/ui/Select.jsx';
 import SectionHeader from '../components/ui/SectionHeader.jsx';
 import ConfirmationModal from '../components/ui/ConfirmationModal.jsx';
+import Loader from '../components/ui/Loader.jsx';
 import { motion } from 'framer-motion';
 
 export default function IssueDetail() {
@@ -49,7 +50,7 @@ export default function IssueDetail() {
   }, [user, issue]);
 
   const canAssign = user?.role === 'Admin';
-  const canUpdateStatus = user?.role === 'Developer';
+  const canUpdateStatus = user?.role === 'Developer' && issue?.assignmentStatus === 'Accepted';
   const isAdmin = user?.role === 'Admin';
   const isUser = user?.role === 'User';
   const isDeveloper = user?.role === 'Developer';
@@ -70,11 +71,9 @@ export default function IssueDetail() {
       });
       setComments(Array.isArray(list) ? list.map(mapNode) : []);
       
-      // Fetch audit logs only for admin users
-      if (isAdmin) {
-        const logs = await api.getIssueAuditLogs(id);
-        setAuditLogs(Array.isArray(logs) ? logs : []);
-      }
+      // Fetch audit logs for all users (not just admins) to display issue lifecycle
+      const logs = await api.getIssueAuditLogs(id);
+      setAuditLogs(Array.isArray(logs) ? logs : []);
     } catch (error) {
       console.error('Error loading issue details:', error);
     }
@@ -84,7 +83,7 @@ export default function IssueDetail() {
     if (id) {
       load(); 
     }
-  }, [id, isAdmin]);
+  }, [id]);
   
   useEffect(() => { 
     if (canAssign) {
@@ -169,7 +168,7 @@ export default function IssueDetail() {
   if (!issue) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        <Loader size="lg" />
       </div>
     );
   }
@@ -221,23 +220,7 @@ export default function IssueDetail() {
     
     sortedLogs.forEach((log, index) => {
       if (log.action === 'UPDATE' && log.changes) {
-        // Handle assignment
-        if (log.changes.assignee) {
-          roadmap.push({
-            id: `assignment-${index}`,
-            title: log.changes.assignee.to ? 'Issue Assigned' : 'Assignment Removed',
-            description: log.changes.assignee.to 
-              ? `Assigned to ${log.changes.assignee.to.name} (${log.changes.assignee.to.email})` 
-              : 'Issue unassigned by admin',
-            status: log.changes.assignee.to ? 'Assigned' : 'Unassigned',
-            timestamp: log.timestamp,
-            user: log.performedBy,
-            icon: log.changes.assignee.to ? '👤' : '❌',
-            assignee: log.changes.assignee.to
-          });
-        }
-        
-        // Handle assignment status changes
+        // Handle assignment status changes first (more important than assignee changes)
         if (log.changes.assignmentStatus) {
           let title = '';
           let icon = '';
@@ -257,7 +240,7 @@ export default function IssueDetail() {
             case 'Pending':
               title = 'Assignment Pending';
               icon = '⏳';
-              description = `Assignment status reset to pending`;
+              description = `Assignment status set to pending`;
               break;
             default:
               title = `Assignment Status Changed`;
@@ -273,6 +256,31 @@ export default function IssueDetail() {
             timestamp: log.timestamp,
             user: log.performedBy,
             icon: icon
+          });
+        }
+        // Handle assignment (only show when there's a new assignment)
+        else if (log.changes.assignee && log.changes.assignee.to) {
+          roadmap.push({
+            id: `assignment-${index}`,
+            title: 'Issue Assigned',
+            description: `Assigned to ${log.changes.assignee.to.name || 'Unknown Developer'} ${log.changes.assignee.to.email ? `(${log.changes.assignee.to.email})` : ''}`,
+            status: 'Assigned',
+            timestamp: log.timestamp,
+            user: log.performedBy,
+            icon: '👤',
+            assignee: log.changes.assignee.to
+          });
+        }
+        // Handle unassignment (only show when there's an unassignment)
+        else if (log.changes.assignee && !log.changes.assignee.to && log.changes.assignee.from) {
+          roadmap.push({
+            id: `unassignment-${index}`,
+            title: 'Assignment Removed',
+            description: 'Issue unassigned by admin',
+            status: 'Unassigned',
+            timestamp: log.timestamp,
+            user: log.performedBy,
+            icon: '❌'
           });
         }
         
@@ -350,7 +358,8 @@ export default function IssueDetail() {
       });
     }
     
-    return roadmap;
+    // Sort the entire roadmap by timestamp to ensure proper order
+    return roadmap.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
   };
 
   const roadmap = getIssueRoadmap();
@@ -458,53 +467,77 @@ export default function IssueDetail() {
               <SectionHeader title="Actions" />
               {canUpdateStatus && (
                 <div className="flex flex-wrap gap-3 mt-4">
-                  {['Open', 'In-Progress', 'Resolved'].map((s) => (
-                    <Button 
-                      key={s} 
-                      variant={issue.status === s ? 'primary' : 'outline'} 
-                      disabled={statusPending} 
-                      onClick={() => handleStatusChange(s)}
-                      className="flex-1 min-w-[120px]"
-                    >
-                      {s}
-                    </Button>
-                  ))}
+                  {['Open', 'In-Progress', 'Resolved'].map((s) => {
+                    // Implement status flow restrictions
+                    const isDisabled = 
+                      (issue.status === 'Open' && s === 'Resolved') || // Can't go directly from Open to Resolved
+                      (issue.status === 'In-Progress' && s === 'Open') || // Can't go back from In-Progress to Open
+                      (issue.status === 'Resolved') || // Can't change status once resolved
+                      (issue.status === s); // Can't change to same status
+                    
+                    // Hide Open button when status is In-Progress or Resolved
+                    if (s === 'Open' && (issue.status === 'In-Progress' || issue.status === 'Resolved')) {
+                      return null;
+                    }
+                    
+                    // Hide In-Progress button when status is Resolved
+                    if (s === 'In-Progress' && issue.status === 'Resolved') {
+                      return null;
+                    }
+                    
+                    return (
+                      <Button 
+                        key={s} 
+                        variant={issue.status === s ? 'primary' : 'outline'} 
+                        disabled={statusPending || isDisabled}
+                        onClick={() => handleStatusChange(s)}
+                        className="flex-1 min-w-[120px]"
+                      >
+                        {s}
+                      </Button>
+                    );
+                  })}
                 </div>
               )}
               {canAssign && (
                 <div className="mt-4">
-                  <label className={`block text-sm font-medium mb-2 ${textClass}`}>
-                    Assign Issue
-                  </label>
-                  <div className="flex items-center gap-3">
-                    <Select 
-                      value={selectedDeveloper || issue.assignee?._id || ''} 
-                      onChange={(e) => handleAssignClick(e.target.value)} 
-                      disabled={assignPending || (issue.assignee && issue.assignmentStatus === 'Pending' && !canChangeAssignment)}
-                      className="flex-1"
-                    >
-                      <option value="">Unassigned</option>
-                      {developers.map((u) => (
-                        <option key={u._id} value={u._id}>{u.name} ({u.role})</option>
-                      ))}
-                    </Select>
-                    {issue.assignee && issue.assignmentStatus === 'Pending' && !canChangeAssignment && (
-                      <div className="text-xs text-amber-600 dark:text-amber-400">
-                        Pending developer response
+                  {/* Only show assignment options if issue is not accepted */}
+                  {issue.assignmentStatus !== 'Accepted' && (
+                    <>
+                      <label className={`block text-sm font-medium mb-2 ${textClass}`}>
+                        Assign Issue
+                      </label>
+                      <div className="flex items-center gap-3">
+                        <Select 
+                          value={selectedDeveloper || issue.assignee?._id || ''} 
+                          onChange={(e) => handleAssignClick(e.target.value)} 
+                          disabled={assignPending || (issue.assignee && issue.assignmentStatus === 'Pending' && !canChangeAssignment)}
+                          className="flex-1"
+                        >
+                          <option value="">Unassigned</option>
+                          {developers.map((u) => (
+                            <option key={u._id} value={u._id}>{u.name} ({u.role})</option>
+                          ))}
+                        </Select>
+                        {issue.assignee && issue.assignmentStatus === 'Pending' && !canChangeAssignment && (
+                          <div className="text-xs text-amber-600 dark:text-amber-400">
+                            Pending developer response
+                          </div>
+                        )}
+                        {issue.assignee && canChangeAssignment && (
+                          <Button 
+                            variant="outline" 
+                            onClick={handleUnassignClick} 
+                            disabled={assignPending}
+                          >
+                            Unassign
+                          </Button>
+                        )}
                       </div>
-                    )}
-                    {issue.assignee && canChangeAssignment && (
-                      <Button 
-                        variant="outline" 
-                        onClick={handleUnassignClick} 
-                        disabled={assignPending}
-                      >
-                        Unassign
-                      </Button>
-                    )}
-                  </div>
+                    </>
+                  )}
                   
-                  {/* Assigned Developer Details */}
+                  {/* Assigned Developer Details - Always show when assigned */}
                   {issue.assignee && (
                     <div className="mt-4 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50">
                       <h4 className={`font-medium ${textClass} mb-2`}>Assigned Developer</h4>
@@ -530,18 +563,20 @@ export default function IssueDetail() {
                           </span>
                         </div>
                       )}
-                      <div className="mt-3 flex gap-2">
-                        {(issue.assignmentStatus === 'Rejected' || issue.assignmentStatus === 'Accepted' || !issue.assignmentStatus) && (
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={handleUnassignClick}
-                            disabled={assignPending}
-                          >
-                            Reassign
-                          </Button>
-                        )}
-                      </div>
+                      {issue.assignmentStatus !== 'Accepted' && (
+                        <div className="mt-3 flex gap-2">
+                          {(issue.assignmentStatus === 'Rejected' || issue.assignmentStatus === 'Accepted' || !issue.assignmentStatus) && (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={handleUnassignClick}
+                              disabled={assignPending}
+                            >
+                              Reassign
+                            </Button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -585,7 +620,7 @@ export default function IssueDetail() {
                                 <p className={`text-sm ${textSecondary} mt-1`}>{item.description}</p>
                                 {item.assignee && (
                                   <p className={`text-xs ${textSecondary} mt-1`}>
-                                    Developer: {item.assignee.name} ({item.assignee.email})
+                                    Developer: {item.assignee.name || 'Unknown Developer'} {item.assignee.email ? `(${item.assignee.email})` : ''}
                                   </p>
                                 )}
                                 <div className="flex items-center gap-2 mt-2">

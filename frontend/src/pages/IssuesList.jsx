@@ -6,11 +6,13 @@ import Input from '../components/ui/Input.jsx';
 import Select from '../components/ui/Select.jsx';
 import Button from '../components/ui/Button.jsx';
 import SectionHeader from '../components/ui/SectionHeader.jsx';
+import Loader from '../components/ui/Loader.jsx';
 import { motion } from 'framer-motion';
 
 export default function IssuesList() {
   const { theme } = useTheme();
   const [issues, setIssues] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [q, setQ] = useState('');
   const [status, setStatus] = useState('');
   const [priority, setPriority] = useState('');
@@ -19,11 +21,26 @@ export default function IssuesList() {
   const textSecondary = theme === 'dark' ? 'text-slate-400' : 'text-slate-600';
 
   const load = async () => {
-    const data = await api.listIssues({ q, status, priority });
-    setIssues(data.issues || data);
+    setLoading(true);
+    try {
+      const data = await api.listIssues({ q, status, priority });
+      setIssues(data.issues || data);
+    } catch (error) {
+      console.error('Error loading issues:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load(); }, []);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader size="lg" />
+      </div>
+    );
+  }
 
   return (
     <motion.div 

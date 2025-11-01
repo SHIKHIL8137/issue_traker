@@ -6,6 +6,8 @@ import Input from '../components/ui/Input.jsx';
 import Select from '../components/ui/Select.jsx';
 import Button from '../components/ui/Button.jsx';
 import Card from '../components/ui/Card.jsx';
+import ErrorDisplay from '../components/ui/ErrorDisplay.jsx';
+import { validateField } from '../utils/validation.js';
 import { motion } from 'framer-motion';
 
 export default function IssueForm({ mode }) {
@@ -13,7 +15,9 @@ export default function IssueForm({ mode }) {
   const { id } = useParams();
   const { theme } = useTheme();
   const [form, setForm] = useState({ title: '', description: '', priority: 'Medium' });
-  const [error, setError] = useState('');
+  const [errors, setErrors] = useState({});
+  const [serverError, setServerError] = useState('');
+  const [touched, setTouched] = useState({});
 
   const textClass = theme === 'dark' ? 'text-white' : 'text-slate-900';
   const textSecondary = theme === 'dark' ? 'text-slate-400' : 'text-slate-600';
@@ -32,15 +36,57 @@ export default function IssueForm({ mode }) {
     load();
   }, [id, mode]);
 
+  const handleFieldBlur = (fieldName, value) => {
+    setTouched(prev => ({ ...prev, [fieldName]: true }));
+    const error = validateField(fieldName, value);
+    setErrors(prev => ({ ...prev, [fieldName]: error }));
+  };
+
+  const handleFieldFocus = (fieldName) => {
+    if (errors[fieldName]) {
+      setErrors(prev => ({ ...prev, [fieldName]: null }));
+    }
+  };
+
+  const handleFieldChange = (fieldName, value) => {
+    setForm(prev => ({ ...prev, [fieldName]: value }));
+  };
+
+  const validate = () => {
+    const newErrors = {};
+    
+    Object.keys(form).forEach(field => {
+      const error = validateField(field, form[field]);
+      if (error) {
+        newErrors[field] = error;
+      }
+    });
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const onSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    
+    setTouched({
+      title: true,
+      description: true,
+      priority: true
+    });
+    
+    setServerError('');
+    
+    if (!validate()) {
+      return;
+    }
+    
     try {
       if (mode === 'edit') await api.updateIssue(id, form);
       else await api.createIssue(form);
       navigate('/issues');
     } catch (err) {
-      setError(err.message);
+      setServerError(err.message || 'Failed to save issue');
     }
   };
 
@@ -60,13 +106,13 @@ export default function IssueForm({ mode }) {
         </p>
       </div>
       
-      {error && (
+      {serverError && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6 p-4 rounded-xl bg-gradient-to-r from-red-500/20 to-pink-500/20 border border-red-500/50 text-red-400"
+          className="mb-6"
         >
-          <p className="text-sm font-medium">{error}</p>
+          <ErrorDisplay error={serverError} />
         </motion.div>
       )}
       
@@ -78,11 +124,13 @@ export default function IssueForm({ mode }) {
             </label>
             <Input 
               value={form.title} 
-              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} 
+              onChange={(e) => handleFieldChange('title', e.target.value)} 
+              onBlur={(e) => handleFieldBlur('title', e.target.value)}
+              onFocus={() => handleFieldFocus('title')}
               placeholder="Enter issue title" 
-              required 
-              className="w-full"
+              className={`w-full ${(touched.title && errors.title) ? 'border-red-500' : ''}`}
             />
+            {touched.title && errors.title && <div className="mt-2"><ErrorDisplay error={errors.title} /></div>}
           </div>
           
           <div>
@@ -90,12 +138,16 @@ export default function IssueForm({ mode }) {
               Description
             </label>
             <textarea 
-              className={`w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all min-h-[160px] ${inputBg} ${theme === 'dark' ? 'border-slate-700' : 'border-slate-300'}`}
+              className={`w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all min-h-[160px] ${inputBg} ${theme === 'dark' ? 'border-slate-700' : 'border-slate-300'} ${
+                (touched.description && errors.description) ? 'border-red-500' : ''
+              }`}
               value={form.description} 
-              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} 
+              onChange={(e) => handleFieldChange('description', e.target.value)} 
+              onBlur={(e) => handleFieldBlur('description', e.target.value)}
+              onFocus={() => handleFieldFocus('description')}
               placeholder="Describe the issue in detail" 
-              required 
             />
+            {touched.description && errors.description && <div className="mt-2"><ErrorDisplay error={errors.description} /></div>}
           </div>
           
           <div>
@@ -104,14 +156,17 @@ export default function IssueForm({ mode }) {
             </label>
             <Select 
               value={form.priority} 
-              onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value }))}
-              className="w-full"
+              onChange={(e) => handleFieldChange('priority', e.target.value)}
+              onBlur={(e) => handleFieldBlur('priority', e.target.value)}
+              onFocus={() => handleFieldFocus('priority')}
+              className={`w-full ${(touched.priority && errors.priority) ? 'border-red-500' : ''}`}
             >
               <option value="Low">Low</option>
               <option value="Medium">Medium</option>
               <option value="High">High</option>
               <option value="Critical">Critical</option>
             </Select>
+            {touched.priority && errors.priority && <div className="mt-2"><ErrorDisplay error={errors.priority} /></div>}
           </div>
           
           <div className="flex gap-3 pt-4">
