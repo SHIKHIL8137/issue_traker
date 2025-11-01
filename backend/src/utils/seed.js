@@ -1,8 +1,7 @@
 import dotenv from 'dotenv';
-import mongoose from 'mongoose';
-import connectDB from '../../src/config/db.js';
-import User from '../../src/models/User.js';
-import Issue from '../../src/models/Issue.js';
+import connectDB from '../config/db.js';
+import User from '../models/User.js';
+import Issue from '../models/Issue.js';
 
 dotenv.config();
 
@@ -32,5 +31,3 @@ const seed = async () => {
 };
 
 seed();
-
-
