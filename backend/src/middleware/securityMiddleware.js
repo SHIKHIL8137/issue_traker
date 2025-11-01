@@ -5,7 +5,8 @@ import mongoSanitize from "express-mongo-sanitize";
 import cors from "cors";
 
 export const applySecurityMiddlewares = (app) => {
-  app.set("trust proxy", false);
+  // Trust proxy for production
+  app.set("trust proxy", process.env.NODE_ENV === 'production' ? 1 : false);
 
   app.use(
     helmet({
@@ -30,13 +31,17 @@ export const applySecurityMiddlewares = (app) => {
     "http://localhost:3000",
     "http://localhost:5173",
     "http://localhost:80",
-    "http://localhost"
+    "http://localhost",
+    "https://issue-traker-pcj9.onrender.com" // Add your Render frontend URL
   ].filter(Boolean);
 
   app.use(
     cors({
       origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);
+        
+        // Check if origin is in allowed list
         if (allowedOrigins.includes(origin) || allowedOrigins.some(o => origin.startsWith(o))) {
           return callback(null, true);
         } else {
@@ -46,6 +51,7 @@ export const applySecurityMiddlewares = (app) => {
       credentials: true,
       methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
       allowedHeaders: ["Content-Type", "Authorization"],
+      exposedHeaders: ["Authorization"]
     })
   );
   app.options(/.*/, cors());
