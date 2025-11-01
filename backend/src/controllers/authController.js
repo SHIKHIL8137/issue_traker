@@ -15,12 +15,16 @@ export const registerUser = async (req, res, next) => {
     const user = await User.create({ name, email, password, role });
     
     const token = generateToken(user._id, user.role, user.name, user.email);
-    res.cookie('token', token, {
+    
+    // Configure cookie options based on environment
+    const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 30 * 24 * 60 * 60 * 1000
-    });
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+    };
+    
+    res.cookie('token', token, cookieOptions);
 
     res.status(201).json({
       _id: user._id,
@@ -46,12 +50,16 @@ export const loginUser = async (req, res, next) => {
     }
 
     const token = generateToken(user._id, user.role, user.name, user.email);
-    res.cookie('token', token, {
+    
+    // Configure cookie options based on environment
+    const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 30 * 24 * 60 * 60 * 1000
-    });
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+    };
+    
+    res.cookie('token', token, cookieOptions);
 
     res.json({
       _id: user._id,
@@ -66,10 +74,15 @@ export const loginUser = async (req, res, next) => {
 
 export const logoutUser = async (req, res, next) => {
   try {
-    res.cookie('token', '', {
+    // Configure cookie options based on environment
+    const cookieOptions = {
       httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
       expires: new Date(0)
-    });
+    };
+    
+    res.cookie('token', '', cookieOptions);
     res.json({ message: 'Logged out successfully' });
   } catch (err) {
     next(err);
