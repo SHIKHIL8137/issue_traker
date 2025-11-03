@@ -243,9 +243,7 @@ The application will be available at:
 |--------|--------------------|----------------------|---------------|
 | GET    | `/api/users`       | Get all users        | Admin         |
 | GET    | `/api/users/:id`   | Get specific user    | Admin         |
-| PATCH  | `/api/users/:id/role` | Update user role  | Admin         |
-| DELETE | `/api/users/:id`   | Delete user          | Admin         |
-| GET    | `/api/users/developers` | Get all developers | Authenticated |
+
 
 ### Comments
 
@@ -285,7 +283,6 @@ The application has three distinct roles with specific permissions:
 1. **Admin**:
    - Can manage all issues
    - Can assign issues to developers
-   - Can manage users and roles
    - Has access to all audit logs
 
 2. **Developer**:
